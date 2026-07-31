@@ -203,6 +203,7 @@ body {
 .poker-table-container {
     margin-top: auto;
     padding-top: 24px;
+    padding-bottom: 24px;
     display: flex;
     justify-content: center;
 }
@@ -508,6 +509,12 @@ body {
     color: var(--accent-blue);
 }
 
+.header-stats {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
 .score-board {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -518,12 +525,31 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+.streak-board {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1));
+    border: 1px solid #F59E0B;
+    color: #F59E0B;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.5); }
+    100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+}
+
 #trainer-score {
     color: var(--color-mixed); /* Green */
 }
 
 /* Board Area */
 .trainer-board {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -534,6 +560,23 @@ body {
     padding: 48px;
     width: 100%;
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+}
+
+.timer-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background-color: var(--bg-main);
+}
+
+.timer-bar {
+    height: 100%;
+    width: 100%;
+    background-color: var(--color-mixed); /* Starts green */
+    transition: width 0.1s linear, background-color 0.5s ease;
 }
 
 .scenario-badge {

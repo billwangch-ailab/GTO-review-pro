@@ -9,6 +9,9 @@ let currentPosition = 'BTN';
 let trainerScore = 0;
 let trainerTotal = 0;
 let currentTrainerQuestion = null;
+let currentStreak = 0;
+let timerInterval = null;
+let timeLeft = 0;
 
 async function init() {
     generateMatrix();
@@ -237,6 +240,13 @@ function generateTrainerQuestion() {
     document.getElementById('trainer-feedback').classList.add('hidden');
     document.querySelector('.trainer-controls').classList.remove('hidden');
 
+    // Reset Timer UI immediately
+    clearInterval(timerInterval);
+    const timerBar = document.getElementById('timer-bar');
+    timerBar.style.transition = 'none';
+    timerBar.style.width = '100%';
+    timerBar.style.backgroundColor = 'var(--color-mixed)';
+
     // 1. Pick a random scenario
     const gameTypes = Object.keys(currentRanges);
     const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
@@ -247,17 +257,45 @@ function generateTrainerQuestion() {
     const positions = Object.keys(currentRanges[gType][act]);
     const pos = positions[Math.floor(Math.random() * positions.length)];
 
-    // 2. Pick a random hand
-    // Generate all 169 possible hands
-    const allHands = [];
+    const rangeData = currentRanges[gType][act][pos];
+
+    // 2. Smart Hand Selection (Weighted)
+    const pureRaises = [];
+    const pureFolds = [];
+    const mixedHands = [];
+
+    // Categorize all 169 possible hands for this scenario
     for (let r1 = 0; r1 < ranks.length; r1++) {
         for (let r2 = 0; r2 < ranks.length; r2++) {
-            if (r1 === r2) allHands.push(ranks[r1] + ranks[r2]);
-            else if (r1 < r2) allHands.push(ranks[r1] + ranks[r2] + 's');
-            else allHands.push(ranks[r2] + ranks[r1] + 'o');
+            let h = '';
+            if (r1 === r2) h = ranks[r1] + ranks[r2];
+            else if (r1 < r2) h = ranks[r1] + ranks[r2] + 's';
+            else h = ranks[r2] + ranks[r1] + 'o';
+            
+            const pct = rangeData[h] || 0;
+            if (pct === 100) pureRaises.push(h);
+            else if (pct === 0) pureFolds.push(h);
+            else mixedHands.push(h);
         }
     }
-    const hand = allHands[Math.floor(Math.random() * allHands.length)];
+
+    // Determine target category based on weights: 60% mixed, 20% pure raise, 20% pure fold
+    // If a category is empty (e.g. no mixed hands), fallback to all hands
+    let targetCategory = [];
+    const rand = Math.random();
+    
+    if (rand < 0.6 && mixedHands.length > 0) {
+        targetCategory = mixedHands;
+    } else if (rand < 0.8 && pureRaises.length > 0) {
+        targetCategory = pureRaises;
+    } else if (pureFolds.length > 0) {
+        targetCategory = pureFolds;
+    } else {
+        // Fallback
+        targetCategory = [...pureRaises, ...pureFolds, ...mixedHands];
+    }
+
+    const hand = targetCategory[Math.floor(Math.random() * targetCategory.length)];
     
     // 3. Get the correct raise percentage
     const raisePct = currentRanges[gType][act][pos][hand] || 0;
@@ -298,10 +336,34 @@ function generateTrainerQuestion() {
     
     card2.textContent = hand[1] + s2;
     card2.className = `card ${suitColors[s2]}`;
+
+    // 5. Start Timer (10 seconds)
+    timeLeft = 100; // 100 steps of 100ms
+    setTimeout(() => {
+        timerBar.style.transition = 'width 0.1s linear, background-color 0.5s ease';
+    }, 50);
+
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        const pct = timeLeft;
+        timerBar.style.width = `${pct}%`;
+        
+        if (pct < 30) {
+            timerBar.style.backgroundColor = 'var(--color-raise)'; // red
+        } else if (pct < 60) {
+            timerBar.style.backgroundColor = '#F59E0B'; // orange
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            submitTrainerAnswer('timeout');
+        }
+    }, 100);
 }
 
 function submitTrainerAnswer(userAction) {
     if (!currentTrainerQuestion) return;
+    clearInterval(timerInterval);
     
     trainerTotal++;
     
@@ -309,23 +371,41 @@ function submitTrainerAnswer(userAction) {
     let isCorrect = false;
     let correctStr = '';
 
-    if (raisePct === 100) {
-        if (userAction === 'raise') isCorrect = true;
-        correctStr = 'raise 100% of the time';
-    } else if (raisePct === 0) {
-        if (userAction === 'fold') isCorrect = true;
-        correctStr = 'fold 100% of the time';
+    if (userAction === 'timeout') {
+        isCorrect = false;
+        correctStr = `Time's up! GTO strategy for this hand is to ${raisePct === 100 ? 'raise 100%' : (raisePct === 0 ? 'fold 100%' : `raise ${raisePct}%`)}`;
     } else {
-        // Mixed strategy
-        isCorrect = true; // Technically any action in the mixed frequency is fine, but we can refine this
-        correctStr = `mix it up! Raise ${raisePct}%, Fold ${100 - raisePct}%`;
+        if (raisePct === 100) {
+            if (userAction === 'raise') isCorrect = true;
+            correctStr = 'raise 100% of the time';
+        } else if (raisePct === 0) {
+            if (userAction === 'fold') isCorrect = true;
+            correctStr = 'fold 100% of the time';
+        } else {
+            // Mixed strategy
+            isCorrect = true; // Technically any action in the mixed frequency is fine, but we can refine this
+            correctStr = `mix it up! Raise ${raisePct}%, Fold ${100 - raisePct}%`;
+        }
     }
 
-    if (isCorrect) trainerScore++;
+    if (isCorrect) {
+        trainerScore++;
+        currentStreak++;
+    } else {
+        currentStreak = 0;
+    }
 
-    // Update Score UI
+    // Update Score & Streak UI
     document.getElementById('trainer-score').textContent = trainerScore;
     document.getElementById('trainer-total').textContent = trainerTotal;
+    
+    const streakBoard = document.getElementById('streak-board');
+    if (currentStreak > 0) {
+        streakBoard.classList.remove('hidden');
+        document.getElementById('trainer-streak').textContent = currentStreak;
+    } else {
+        streakBoard.classList.add('hidden');
+    }
 
     // Show Feedback
     document.querySelector('.trainer-controls').classList.add('hidden');
@@ -335,12 +415,12 @@ function submitTrainerAnswer(userAction) {
     if (isCorrect) {
         feedbackEl.className = 'trainer-feedback correct';
         document.getElementById('feedback-title').textContent = '✅ Correct!';
+        document.getElementById('feedback-desc').textContent = `GTO strategy for ${currentTrainerQuestion.hand} is to ${correctStr}.`;
     } else {
         feedbackEl.className = 'trainer-feedback incorrect';
-        document.getElementById('feedback-title').textContent = '❌ Incorrect!';
+        document.getElementById('feedback-title').textContent = userAction === 'timeout' ? '⏰ Timeout!' : '❌ Incorrect!';
+        document.getElementById('feedback-desc').textContent = userAction === 'timeout' ? correctStr : `GTO strategy for ${currentTrainerQuestion.hand} is to ${correctStr}.`;
     }
-    
-    document.getElementById('feedback-desc').textContent = `GTO strategy for ${currentTrainerQuestion.hand} is to ${correctStr}.`;
 }
 
 // Initialize on DOM ready

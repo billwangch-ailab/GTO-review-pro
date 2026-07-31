@@ -150,12 +150,19 @@
             <div id="trainer-view" class="hidden">
                 <div class="trainer-header">
                     <h2>Trainer Mode</h2>
-                    <div class="score-board">
-                        Score: <span id="trainer-score">0</span> / <span id="trainer-total">0</span>
+                    <div class="header-stats">
+                        <div class="streak-board hidden" id="streak-board">
+                            🔥 <span id="trainer-streak">0</span>
+                        </div>
+                        <div class="score-board">
+                            Score: <span id="trainer-score">0</span> / <span id="trainer-total">0</span>
+                        </div>
                     </div>
                 </div>
-                
                 <div class="trainer-board">
+                    <div class="timer-container" id="timer-container">
+                        <div class="timer-bar" id="timer-bar"></div>
+                    </div>
                     <div class="scenario-badge" id="trainer-scenario">6MAX | BTN | RFI</div>
                     
                     <div class="playing-cards" id="trainer-cards">
