@@ -5,6 +5,11 @@ let currentGameType = '6MAX';
 let currentAction = 'RFI';
 let currentPosition = 'BTN';
 
+// Trainer Mode State
+let trainerScore = 0;
+let trainerTotal = 0;
+let currentTrainerQuestion = null;
+
 async function init() {
     generateMatrix();
     setupEventListeners();
@@ -119,6 +124,40 @@ function setupEventListeners() {
             updateUI();
         });
     });
+
+    // Navigation Toggles
+    const navViewer = document.getElementById('nav-viewer');
+    const navTrainer = document.getElementById('nav-trainer');
+    const viewerView = document.getElementById('viewer-view');
+    const trainerView = document.getElementById('trainer-view');
+    const leftPanel = document.querySelector('.left-panel');
+
+    if (navViewer && navTrainer) {
+        navViewer.addEventListener('click', () => {
+            navViewer.classList.add('active');
+            navTrainer.classList.remove('active');
+            viewerView.classList.remove('hidden');
+            trainerView.classList.add('hidden');
+            leftPanel.style.opacity = '1';
+            leftPanel.style.pointerEvents = 'auto';
+        });
+
+        navTrainer.addEventListener('click', () => {
+            navTrainer.classList.add('active');
+            navViewer.classList.remove('active');
+            trainerView.classList.remove('hidden');
+            viewerView.classList.add('hidden');
+            leftPanel.style.opacity = '0.3';
+            leftPanel.style.pointerEvents = 'none';
+            generateTrainerQuestion();
+        });
+    }
+
+    // Trainer Buttons
+    document.getElementById('btn-raise')?.addEventListener('click', () => submitTrainerAnswer('raise'));
+    document.getElementById('btn-call')?.addEventListener('click', () => submitTrainerAnswer('call'));
+    document.getElementById('btn-fold')?.addEventListener('click', () => submitTrainerAnswer('fold'));
+    document.getElementById('btn-next')?.addEventListener('click', generateTrainerQuestion);
 }
 
 function updateUI() {
@@ -185,6 +224,123 @@ function showDetails(hand) {
 function hideDetails() {
     // Optional: could keep last hand visible or fade out
     // document.getElementById('hover-details').classList.remove('visible');
+}
+
+/* =========================================
+   Trainer Mode Logic
+   ========================================= */
+
+function generateTrainerQuestion() {
+    if (!currentRanges) return;
+    
+    // Hide feedback, show controls
+    document.getElementById('trainer-feedback').classList.add('hidden');
+    document.querySelector('.trainer-controls').classList.remove('hidden');
+
+    // 1. Pick a random scenario
+    const gameTypes = Object.keys(currentRanges);
+    const gType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+    
+    const actions = Object.keys(currentRanges[gType]);
+    const act = actions[Math.floor(Math.random() * actions.length)];
+    
+    const positions = Object.keys(currentRanges[gType][act]);
+    const pos = positions[Math.floor(Math.random() * positions.length)];
+
+    // 2. Pick a random hand
+    // Generate all 169 possible hands
+    const allHands = [];
+    for (let r1 = 0; r1 < ranks.length; r1++) {
+        for (let r2 = 0; r2 < ranks.length; r2++) {
+            if (r1 === r2) allHands.push(ranks[r1] + ranks[r2]);
+            else if (r1 < r2) allHands.push(ranks[r1] + ranks[r2] + 's');
+            else allHands.push(ranks[r2] + ranks[r1] + 'o');
+        }
+    }
+    const hand = allHands[Math.floor(Math.random() * allHands.length)];
+    
+    // 3. Get the correct raise percentage
+    const raisePct = currentRanges[gType][act][pos][hand] || 0;
+
+    currentTrainerQuestion = {
+        gameType: gType,
+        action: act,
+        position: pos,
+        hand: hand,
+        raisePct: raisePct
+    };
+
+    // 4. Update UI
+    const actionNames = { 'RFI': 'RFI', 'VS_OPEN': 'vs Open', 'VS_3BET': 'vs 3-Bet' };
+    document.getElementById('trainer-scenario').textContent = `${gType} | ${pos} | ${actionNames[act]}`;
+    document.getElementById('trainer-hand-name').textContent = hand;
+
+    // Generate random suits for the visual cards
+    const suits = ['♠', '♥', '♦', '♣'];
+    const suitColors = {'♠': 'black', '♣': 'black', '♥': 'red', '♦': 'red'};
+    
+    let s1 = suits[Math.floor(Math.random() * suits.length)];
+    let s2 = suits[Math.floor(Math.random() * suits.length)];
+    
+    if (hand.endsWith('s')) {
+        s2 = s1; // Suited
+    } else if (hand.length === 3 || hand.length === 2) { // Offsuit or Pair
+        while (s1 === s2) {
+            s2 = suits[Math.floor(Math.random() * suits.length)];
+        }
+    }
+
+    const card1 = document.getElementById('card-1');
+    const card2 = document.getElementById('card-2');
+    
+    card1.textContent = hand[0] + s1;
+    card1.className = `card ${suitColors[s1]}`;
+    
+    card2.textContent = hand[1] + s2;
+    card2.className = `card ${suitColors[s2]}`;
+}
+
+function submitTrainerAnswer(userAction) {
+    if (!currentTrainerQuestion) return;
+    
+    trainerTotal++;
+    
+    const raisePct = currentTrainerQuestion.raisePct;
+    let isCorrect = false;
+    let correctStr = '';
+
+    if (raisePct === 100) {
+        if (userAction === 'raise') isCorrect = true;
+        correctStr = 'raise 100% of the time';
+    } else if (raisePct === 0) {
+        if (userAction === 'fold') isCorrect = true;
+        correctStr = 'fold 100% of the time';
+    } else {
+        // Mixed strategy
+        isCorrect = true; // Technically any action in the mixed frequency is fine, but we can refine this
+        correctStr = `mix it up! Raise ${raisePct}%, Fold ${100 - raisePct}%`;
+    }
+
+    if (isCorrect) trainerScore++;
+
+    // Update Score UI
+    document.getElementById('trainer-score').textContent = trainerScore;
+    document.getElementById('trainer-total').textContent = trainerTotal;
+
+    // Show Feedback
+    document.querySelector('.trainer-controls').classList.add('hidden');
+    const feedbackEl = document.getElementById('trainer-feedback');
+    feedbackEl.classList.remove('hidden');
+    
+    if (isCorrect) {
+        feedbackEl.className = 'trainer-feedback correct';
+        document.getElementById('feedback-title').textContent = '✅ Correct!';
+    } else {
+        feedbackEl.className = 'trainer-feedback incorrect';
+        document.getElementById('feedback-title').textContent = '❌ Incorrect!';
+    }
+    
+    document.getElementById('feedback-desc').textContent = `GTO strategy for ${currentTrainerQuestion.hand} is to ${correctStr}.`;
 }
 
 // Initialize on DOM ready
