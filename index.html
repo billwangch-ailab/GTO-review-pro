@@ -17,7 +17,8 @@
         <nav class="main-nav">
             <button class="nav-btn active" id="nav-viewer">Viewer Mode</button>
             <button class="nav-btn" id="nav-trainer">Trainer Mode</button>
-            <button class="nav-btn">Analysis</button>
+            <button class="nav-btn" id="nav-analysis">Analysis</button>
+            <button class="nav-btn" id="nav-quiz">Quiz</button>
         </nav>
         <div class="user-profile">
             <div class="avatar">U</div>
@@ -36,6 +37,8 @@
                 <select class="premium-select" id="game-type">
                     <option value="6MAX">6-Max Cash Game</option>
                     <option value="9MAX">9-Max Full Ring</option>
+                    <option value="MTT_20BB">MTT 20BB</option>
+                    <option value="MTT_40BB">MTT 40BB</option>
                 </select>
             </div>
 
@@ -65,11 +68,11 @@
 
             <!-- Mini Poker Table Graphic -->
             <div class="poker-table-container">
-                <div class="poker-table">
+                <div class="poker-table is-6max">
                     <div class="table-felt">
                         <div class="table-logo">♠️ GTO</div>
                         <div class="community-cards placeholder">
-                            <span>Flop</span>
+                            <span>Table</span>
                         </div>
                     </div>
                     <!-- Seats -->
@@ -94,12 +97,12 @@
                 <div class="matrix-header">
                     <div>
                         <h2 id="current-range-title">BTN RFI Range</h2>
-                        <p class="subtitle">100BB Effective, 2.5bb Open Size</p>
+                        <p class="subtitle" id="range-subtitle">100BB Effective, 2.5bb Open Size</p>
                     </div>
                     <div class="range-stats">
                         <div class="stat-box">
                             <span class="stat-label">Frequency</span>
-                            <span class="stat-value" id="raise-freq">43.2%</span>
+                            <span class="stat-value" id="raise-freq">0.0%</span>
                         </div>
                     </div>
                 </div>
@@ -126,7 +129,10 @@
 
                 <!-- Hover Details Panel -->
                 <div class="hover-details" id="hover-details">
-                    <div class="hover-hand">Select a hand</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div class="hover-hand" style="margin-bottom: 0;">Select a hand</div>
+                        <div class="hover-ev" id="hover-ev" style="font-size: 14px; font-weight: 700; color: #10B981;">EV: +0.00</div>
+                    </div>
                     <div class="hover-actions">
                         <div class="action-bar-container">
                             <div class="action-bar-label">Raise</div>
@@ -151,6 +157,12 @@
                 <div class="trainer-header">
                     <h2>Trainer Mode</h2>
                     <div class="header-stats">
+                        <select class="premium-select" id="trainer-timer-setting" style="margin-right: 16px; padding: 4px 12px; font-size: 13px; min-width: 130px; height: 32px; background-color: var(--bg-main);">
+                            <option value="100">10s (Blitz)</option>
+                            <option value="300">30s (Standard)</option>
+                            <option value="600">60s (Thinker)</option>
+                            <option value="999999">Infinite</option>
+                        </select>
                         <div class="streak-board hidden" id="streak-board">
                             🔥 <span id="trainer-streak">0</span>
                         </div>
@@ -163,32 +175,112 @@
                     <div class="timer-container" id="timer-container">
                         <div class="timer-bar" id="timer-bar"></div>
                     </div>
-                    <div class="scenario-badge" id="trainer-scenario">6MAX | BTN | RFI</div>
+                    <div class="scenario-badge" id="trainer-scenario">Scenario...</div>
+                    
+                    <div class="playing-cards board-cards hidden" id="trainer-board">
+                        <!-- Flop/Turn/River cards injected by JS -->
+                    </div>
                     
                     <div class="playing-cards" id="trainer-cards">
-                        <div class="card" id="card-1">A♠</div>
-                        <div class="card" id="card-2">K♥</div>
+                        <!-- Hole cards injected by JS -->
                     </div>
-                    <div class="hand-name" id="trainer-hand-name">AKo</div>
+                    <div class="hand-name" id="trainer-hand-name">-</div>
                 </div>
 
                 <div class="trainer-controls">
+                    <button class="action-btn bet-btn hidden" id="btn-bet">Bet</button>
+                    <button class="action-btn call-btn hidden" id="btn-check">Check</button>
                     <button class="action-btn raise-btn" id="btn-raise">Raise</button>
                     <button class="action-btn call-btn" id="btn-call">Call</button>
                     <button class="action-btn fold-btn" id="btn-fold">Fold</button>
                 </div>
 
                 <div class="trainer-feedback hidden" id="trainer-feedback">
-                    <h3 id="feedback-title">Correct!</h3>
-                    <p id="feedback-desc">GTO raises this hand 100% of the time.</p>
+                    <h3 id="feedback-title">Feedback</h3>
+                    <p id="feedback-desc">-</p>
                     <button class="next-btn" id="btn-next">Next Hand</button>
                 </div>
             </div>
 
+            <!-- QUIZ MODE -->
+            <div id="quiz-view" class="hidden">
+                <div class="trainer-header">
+                    <h2>Probability Quiz</h2>
+                    <div class="header-stats">
+                        <div class="score-board">
+                            Score: <span id="quiz-score">0</span> / <span id="quiz-total">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="trainer-board">
+                    <div class="scenario-badge" id="quiz-scenario">Scenario</div>
+                    <p class="quiz-question" id="quiz-question-text">Question?</p>
+                    <div class="playing-cards board-cards" id="quiz-board"></div>
+                    <div class="playing-cards" id="quiz-hand"></div>
+                </div>
+                <div class="quiz-controls" id="quiz-options">
+                    <!-- Options injected by JS -->
+                </div>
+                <div class="trainer-feedback hidden" id="quiz-feedback">
+                    <h3 id="quiz-feedback-title">Result</h3>
+                    <p id="quiz-feedback-desc">Explanation.</p>
+                    <button class="next-btn" id="btn-quiz-next">Next Question</button>
+                </div>
+            </div>
+
+            <!-- ANALYSIS MODE -->
+            <div id="analysis-view" class="hidden">
+                <div class="analysis-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 700px;">
+                    <h2>Mistake Analysis (Weakness Report)</h2>
+                    <button class="action-btn" id="btn-clear-mistakes" style="font-size: 14px; padding: 6px 12px; background: #EF4444; border: none; max-width: 150px; flex: none; box-shadow: none;">Clear History</button>
+                </div>
+                <div class="analysis-content" id="analysis-report" style="margin-bottom: 40px; width: 100%; max-width: 700px;">
+                    <!-- Injected by JS -->
+                </div>
+
+                <div class="analysis-header" style="border-top: 1px solid var(--border-color); padding-top: 32px;">
+                    <h2>Custom Range Editor</h2>
+                    <div class="editor-controls">
+                        <select class="premium-select" id="edit-action">
+                            <option value="100">Raise (100%)</option>
+                            <option value="50">Mixed (50%)</option>
+                            <option value="0">Fold (0%)</option>
+                        </select>
+                        <button class="action-btn" id="btn-save-range">Save Range</button>
+                        <button class="action-btn" id="btn-clear-range">Clear</button>
+                    </div>
+                </div>
+                <div class="matrix-container">
+                    <div class="range-matrix" id="edit-matrix">
+                        <!-- Matrix cells will be generated by JS -->
+                    </div>
+                </div>
+            </div>
+
         </section>
+        
+        <!-- Floating Notes Widget -->
+        <button class="floating-btn" id="btn-toggle-notes" title="Study Scratchpad">📝</button>
+        <div class="notes-panel" id="notes-panel">
+            <div class="notes-header">
+                <h3>Study Scratchpad</h3>
+                <button id="btn-close-notes">✕</button>
+            </div>
+            <textarea id="notes-textarea" placeholder="Jot down your opponent reads, math calculations, or insights here... (Auto-saves to local storage)"></textarea>
+        </div>
     </main>
 
+    <!-- Data -->
     <script src="data/preflop_ranges.js"></script>
-    <script src="src/main.js"></script>
+    <script src="data/postflop_scenarios.js"></script>
+    
+    <!-- Modules -->
+    <script src="src/core.js"></script>
+    <script src="src/viewer.js"></script>
+    <script src="src/editor.js"></script>
+    <script src="src/analysis.js"></script>
+    <script src="src/trainer.js"></script>
+    <script src="src/quiz.js"></script>
+    <script src="src/notes.js"></script>
 </body>
 </html>

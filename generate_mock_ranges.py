@@ -4,7 +4,7 @@ ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
 positions_6max = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 positions_9max = ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 actions = ['RFI', 'VS_OPEN', 'VS_3BET']
-game_types = ['6MAX', '9MAX']
+game_types = ['6MAX', '9MAX', 'MTT_20BB', 'MTT_40BB']
 
 def hand_rank(r):
     return 14 - ranks.index(r)
