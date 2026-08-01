@@ -43,6 +43,17 @@ window.GTOViewer = {
         }
     },
 
+    calculateEv: function(hand, raisePct) {
+        if (raisePct <= 0) return "0.00";
+        const r1 = window.GTO.ranks.indexOf(hand[0]);
+        const r2 = window.GTO.ranks.indexOf(hand[1]);
+        const rankSum = r1 + r2;
+        const posIndex = ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'].indexOf(window.GTO.currentPosition);
+        const posMultiplier = 1 + (Math.max(0, posIndex) * 0.1);
+        const baseEv = Math.max(0.05, (20 - rankSum) * 0.12 * posMultiplier + (raisePct / 100) * 0.5);
+        return baseEv.toFixed(2);
+    },
+
     updateUI: function() {
         const actionNames = { 'RFI': 'RFI', 'VS_OPEN': 'vs Open', 'VS_3BET': 'vs 3-Bet' };
         const titleEl = document.getElementById('current-range-title');
@@ -72,8 +83,8 @@ window.GTOViewer = {
             
             const pctSpan = cell.querySelector('.cell-pct');
             if (pctSpan) {
-                if (raisePct > 0 && raisePct < 100) {
-                    pctSpan.textContent = raisePct;
+                if (raisePct > 0) {
+                    pctSpan.textContent = this.calculateEv(hand, raisePct);
                     pctSpan.style.display = 'block';
                 } else {
                     pctSpan.style.display = 'none';
@@ -106,17 +117,29 @@ window.GTOViewer = {
         const foldPct = 100 - raisePct;
 
         let evStr = "0.00";
-        if (raisePct > 0) {
-            const ranks = window.GTO.ranks;
-            const r1 = ranks.indexOf(hand[0]);
-            const r2 = ranks.indexOf(hand[1]);
-            const rankSum = r1 + r2; // lower is better
-            // Fake EV: AA (0+0=0) gives max EV. 
-            // Add slight randomness based on raisePct to make it feel real.
-            const baseEv = Math.max(0.05, (20 - rankSum) * 0.12 + (raisePct / 100) * 0.5);
-            evStr = baseEv.toFixed(2);
-        }
+        const ranks = window.GTO.ranks;
+        const r1 = ranks.indexOf(hand[0]);
+        const r2 = ranks.indexOf(hand[1]);
+        const rankSum = r1 + r2; // lower is better
         
+        // Calculate Mock Raw Equity (Win Rate vs Random Hand)
+        let rawEq;
+        if (hand.length === 2) { // Pair
+            rawEq = 85 - (r1 * 2.5);
+        } else {
+            rawEq = 68 - (r1 * 1.2) - (r2 * 1.5);
+            if (hand.endsWith('s')) rawEq += 2.5;
+            else rawEq -= 2.5;
+        }
+        rawEq = Math.max(30, Math.min(85, rawEq)); // clamp 30-85%
+        
+        evStr = this.calculateEv(hand, raisePct);
+        
+        const equityEl = document.getElementById('hover-equity');
+        if (equityEl) {
+            equityEl.textContent = `Win Rate: ~${rawEq.toFixed(1)}%`;
+        }
+
         const evEl = document.getElementById('hover-ev');
         if (evEl) {
             evEl.textContent = `EV: +${evStr}`;
